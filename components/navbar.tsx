@@ -41,6 +41,7 @@ export function Navbar({ userName }: { userName: string | null }) {
       }}
     >
       <nav
+        className="app-navbar"
         style={{
           maxWidth: 1100,
           margin: "0 auto",
@@ -66,12 +67,25 @@ export function Navbar({ userName }: { userName: string | null }) {
           >
             PromptStore
           </span>
+          <span
+            className="navbar-tagline"
+            style={{
+              fontSize: 13,
+              color: "var(--text-3)",
+              fontWeight: 400,
+              paddingLeft: 8,
+              borderLeft: "1px solid var(--border)",
+              marginLeft: 2,
+            }}
+          >
+            Almacén de instrucciones para IA
+          </span>
         </Link>
 
         <div style={{ flex: 1 }} />
 
         {!isAuthed && !isAuthPage && (
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="nav-cta" style={{ display: "flex", gap: 8 }}>
             <Btn
               variant="ghost"
               size="sm"
@@ -172,6 +186,7 @@ export function Navbar({ userName }: { userName: string | null }) {
                 <form action={signOut}>
                   <button
                     type="submit"
+                    className="navbar-signout"
                     style={{
                       width: "100%",
                       textAlign: "left",
@@ -182,12 +197,6 @@ export function Navbar({ userName }: { userName: string | null }) {
                       cursor: "pointer",
                       fontSize: 13,
                       color: "var(--text-2)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "var(--bg-3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
                     }}
                   >
                     Cerrar sesión

@@ -153,6 +153,12 @@ select:focus-visible {
   }
 }
 
+@media (max-width: 720px) {
+  .navbar-tagline {
+    display: none !important;
+  }
+}
+
 @media (max-width: 480px) {
   .app-navbar {
     padding: 0 16px !important;

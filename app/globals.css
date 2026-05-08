@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --accent: oklch(55% 0.18 270);
+  --accent-light: oklch(94% 0.04 270);
+  --accent-mid: oklch(72% 0.12 270);
+  --bg: oklch(98.5% 0.005 60);
+  --bg-2: oklch(96% 0.006 60);
+  --bg-3: oklch(92% 0.008 260);
+  --surface: #ffffff;
+  --border: oklch(89% 0.008 260);
+  --border-2: oklch(82% 0.012 260);
+  --text-1: oklch(18% 0.015 260);
+  --text-2: oklch(42% 0.012 260);
+  --text-3: oklch(62% 0.01 260);
+  --mono: var(--font-dm-mono), monospace;
+  --sans: var(--font-dm-sans), sans-serif;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.09), 0 4px 8px rgba(0, 0, 0, 0.04);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: var(--sans);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 99px;
+}
+
+.screen-enter {
+  animation: fadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}

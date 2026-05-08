@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PromptStore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: oklch(55% 0.18 270);
+      --accent-light: oklch(94% 0.04 270);
+      --accent-mid: oklch(72% 0.12 270);
+      --bg: oklch(98.5% 0.005 60);
+      --bg-2: oklch(96% 0.006 60);
+      --bg-3: oklch(92% 0.008 260);
+      --surface: #ffffff;
+      --border: oklch(89% 0.008 260);
+      --border-2: oklch(82% 0.012 260);
+      --text-1: oklch(18% 0.015 260);
+      --text-2: oklch(42% 0.012 260);
+      --text-3: oklch(62% 0.01 260);
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-xl: 20px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+      --shadow-lg: 0 12px 32px rgba(0,0,0,0.09), 0 4px 8px rgba(0,0,0,0.04);
+    }
+
+    html, body, #root {
+      height: 100%;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text-1);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+    /* Transitions */
+    .screen-enter {
+      animation: fadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Utility */
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── DESIGN TOKENS ───────────────────────────────────────── */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "oklch(55% 0.18 270)",
+  "density": "compact",
+  "darkMode": false,
+  "roundness": "sharp"
+}/*EDITMODE-END*/;
+
+const DENSITY = {
+  compact:     { gap: 12, cardPad: 16, baseFz: 14 },
+  comfortable: { gap: 20, cardPad: 24, baseFz: 15 },
+  spacious:    { gap: 28, cardPad: 32, baseFz: 16 },
+};
+
+const ROUNDNESS = {
+  sharp:  { sm: 4,  md: 6,  lg: 8,  xl: 10 },
+  medium: { sm: 8,  md: 12, lg: 16, xl: 20 },
+  round:  { sm: 12, md: 18, lg: 24, xl: 32 },
+};
+
+/* ─── SAMPLE DATA ─────────────────────────────────────────── */
+const SAMPLE_PROMPTS = [
+  { id: 1, title: 'Redactor de artículos SEO', description: 'Genera artículos optimizados para buscadores con estructura clara y keywords naturales.', content: 'Actúa como un redactor SEO experto. Voy a darte un tema y quiero que escribas un artículo de blog de aproximadamente 1200 palabras. El artículo debe incluir:\n\n- Un H1 atractivo con la keyword principal\n- 3-4 subtítulos H2 relevantes\n- Introducción que engancha en las primeras 2 frases\n- Párrafos cortos (máximo 4 líneas)\n- Keyword principal 3-5 veces de forma natural\n- Una conclusión con CTA\n- Tono: profesional pero accesible\n\nTema: [INSERTAR TEMA]\nKeyword principal: [INSERTAR KEYWORD]', category: 'Escritura', favorite: true, public: true, slug: 'redactor-articulos-seo', updated: '2 horas' },
+  { id: 2, title: 'Code reviewer', description: 'Revisa código en profundidad buscando bugs, mejoras de rendimiento y buenas prácticas.', content: 'Eres un senior developer con 10+ años de experiencia. Revisa el siguiente código y proporciona:\n\n1. Bugs o errores potenciales\n2. Problemas de rendimiento\n3. Violaciones de buenas prácticas\n4. Sugerencias de refactor con ejemplos\n5. Puntuación general del código (1-10)\n\nSé directo y específico. Incluye fragmentos de código corregido cuando sea relevante.\n\n```\n[PEGAR CÓDIGO AQUÍ]\n```', category: 'Desarrollo', favorite: true, public: false, slug: 'code-reviewer', updated: '1 día' },
+  { id: 3, title: 'Generador de copy para anuncios', description: 'Crea copy persuasivo para Facebook Ads, Google Ads e Instagram.', content: 'Actúa como un copywriter especialista en publicidad de pago. Crea variantes de copy para el siguiente producto/servicio:\n\nProducto: [NOMBRE]\nPúblico objetivo: [DESCRIPCIÓN]\nBeneficio principal: [BENEFICIO]\nCTA deseado: [CTA]\n\nGenera:\n- 3 titulares para Facebook Ads (máx 40 caracteres)\n- 2 descripciones principales (máx 125 caracteres)\n- 1 texto largo para awareness (máx 300 palabras)\n\nTono: [confiado/urgente/educativo/emocional]', category: 'Marketing', favorite: false, public: true, slug: 'copy-anuncios', updated: '3 días' },
+  { id: 4, title: 'Análisis de competidores', description: 'Framework completo para analizar la competencia de cualquier negocio.', content: 'Analiza el siguiente competidor de mi negocio con este framework:\n\nMi negocio: [DESCRIPCIÓN]\nCompetidor a analizar: [NOMBRE Y URL]\n\nCubre:\n1. Propuesta de valor principal\n2. Segmento de cliente objetivo\n3. Canales de adquisición visibles\n4. Precios y modelo de negocio\n5. Fortalezas detectadas\n6. Debilidades o gaps\n7. Oportunidades para diferenciarnos\n\nSé específico y basado en evidencia observable.', category: 'Estrategia', favorite: false, public: false, slug: 'analisis-competidores', updated: '5 días' },
+  { id: 5, title: 'Asistente de emails difíciles', description: 'Redacta emails profesionales para situaciones complicadas o delicadas.', content: 'Necesito escribir un email profesional para la siguiente situación:\n\nSituación: [DESCRIBE EL CONTEXTO]\nRelación con el receptor: [jefe/cliente/proveedor/colega]\nObjetivo del email: [QUÉ QUIERES CONSEGUIR]\nTono deseado: [firme/conciliador/formal/directo]\n\nEl email debe:\n- Ser claro y al grano\n- Mantener el profesionalismo\n- No ser agresivo ni pasivo-agresivo\n- Tener un cierre orientado a acción\n\nMáximo 200 palabras.', category: 'Comunicación', favorite: true, public: false, slug: 'emails-dificiles', updated: '1 semana' },
+];
+
+const CATEGORIES = ['Todos', 'Escritura', 'Desarrollo', 'Marketing', 'Estrategia', 'Comunicación'];
+
+/* ─── SHARED COMPONENTS ───────────────────────────────────── */
+function Logo({ size = 20, color }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="18" height="18" rx="5" fill={color || 'var(--accent)'} />
+      <rect x="7" y="8" width="10" height="1.5" rx="0.75" fill="white" />
+      <rect x="7" y="11.25" width="7" height="1.5" rx="0.75" fill="white" />
+      <rect x="7" y="14.5" width="8.5" height="1.5" rx="0.75" fill="white" />
+    </svg>
+  );
+}
+
+function Btn({ children, variant = 'primary', size = 'md', onClick, disabled, style, type }) {
+  const base = {
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    fontFamily: 'var(--sans)', fontWeight: 500, cursor: disabled ? 'not-allowed' : 'pointer',
+    border: 'none', transition: 'all 0.15s ease', whiteSpace: 'nowrap',
+    opacity: disabled ? 0.5 : 1,
+  };
+  const sizes = {
+    sm: { padding: '6px 14px', fontSize: 13, borderRadius: 'var(--r-sm)' },
+    md: { padding: '9px 18px', fontSize: 14, borderRadius: 'var(--r-md)' },
+    lg: { padding: '12px 24px', fontSize: 15, borderRadius: 'var(--r-md)' },
+  };
+  const variants = {
+    primary:  { background: 'var(--accent)', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.12)' },
+    secondary:{ background: 'var(--bg-3)', color: 'var(--text-1)', boxShadow: 'none' },
+    ghost:    { background: 'transparent', color: 'var(--text-2)', boxShadow: 'none' },
+    outline:  { background: 'transparent', color: 'var(--text-1)', border: '1.5px solid var(--border-2)', boxShadow: 'none' },
+    danger:   { background: 'oklch(55% 0.20 25)', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' },
+  };
+  return (
+    <button
+      type={type || 'button'}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.filter = 'brightness(0.93)'; }}
+      onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Badge({ children, color = 'default' }) {
+  const colors = {
+    default: { bg: 'var(--bg-3)', text: 'var(--text-2)' },
+    accent:  { bg: 'var(--accent-light)', text: 'var(--accent)' },
+    green:   { bg: 'oklch(93% 0.04 155)', text: 'oklch(42% 0.15 155)' },
+    amber:   { bg: 'oklch(95% 0.05 80)',  text: 'oklch(45% 0.16 75)' },
+  };
+  const c = colors[color] || colors.default;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 9px', borderRadius: 99,
+      fontSize: 12, fontWeight: 500,
+      background: c.bg, color: c.text,
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function Input({ label, placeholder, value, onChange, type = 'text', multiline, rows = 4, hint, style, mono }) {
+  const inputStyle = {
+    width: '100%', padding: '9px 13px',
+    background: 'var(--bg)', border: '1.5px solid var(--border)',
+    borderRadius: 'var(--r-md)', fontSize: 14,
+    fontFamily: mono ? 'var(--mono)' : 'var(--sans)',
+    color: 'var(--text-1)', outline: 'none',
+    transition: 'border-color 0.15s ease',
+    resize: multiline ? 'vertical' : 'none',
+    lineHeight: 1.6,
+    ...style,
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {label && <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>{label}</label>}
+      {multiline
+        ? <textarea rows={rows} placeholder={placeholder} value={value} onChange={onChange}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
+          />
+        : <input type={type} placeholder={placeholder} value={value} onChange={onChange}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
+          />
+      }
+      {hint && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{hint}</span>}
+    </div>
+  );
+}
+
+/* ─── NAV BAR ─────────────────────────────────────────────── */
+function Navbar({ screen, navigate, user }) {
+  const isPublic = screen === 'home' || screen === 'public-prompt';
+  return (
+    <header style={{
+      position: 'sticky', top: 0, zIndex: 100,
+      background: 'rgba(255,255,255,0.85)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid var(--border)',
+    }}>
+      <nav style={{
+        maxWidth: 1100, margin: '0 auto', padding: '0 24px',
+        height: 56, display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <button onClick={() => navigate('home')} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--sans)',
+        }}>
+          <Logo size={22} />
+          <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-1)' }}>PromptStore</span>
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        {isPublic && !user && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="ghost" size="sm" onClick={() => navigate('login')}>Entrar</Btn>
+            <Btn size="sm" onClick={() => navigate('register')}>Registrarse gratis</Btn>
+          </div>
+        )}
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Btn variant="ghost" size="sm" onClick={() => navigate('dashboard')}>Dashboard</Btn>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              flexShrink: 0,
+            }} onClick={() => navigate('dashboard')}>
+              {user[0].toUpperCase()}
+            </div>
+          </div>
+        )}
+      </nav>
+    </header>
+  );
+}
+
+/* ─── HOME ────────────────────────────────────────────────── */
+function HomeScreen({ navigate }) {
+  const features = [
+    { icon: '▦', title: 'Organiza tus prompts', desc: 'Categorías, favoritos y búsqueda instantánea. Encuentra cualquier prompt en segundos.' },
+    { icon: '◈', title: 'Mejora con IA', desc: 'Un clic para reescribir, afinar o generar variantes de cualquier prompt usando IA.' },
+    { icon: '◎', title: 'Comparte públicamente', desc: 'Genera una URL única para cada prompt. Comparte tu trabajo con el mundo.' },
+  ];
+  const [email, setEmail] = useState('');
+
+  return (
+    <div className="screen-enter">
+      {/* Hero */}
+      <section style={{
+        maxWidth: 760, margin: '0 auto', padding: '88px 24px 72px',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          padding: '4px 12px', borderRadius: 99,
+          background: 'var(--accent-light)', color: 'var(--accent)',
+          fontSize: 12, fontWeight: 500, marginBottom: 28,
+        }}>
+          <span style={{ fontFamily: 'var(--mono)' }}>v1.0</span>
+          <span>·</span>
+          MVP lanzado
+        </div>
+
+        <h1 style={{
+          fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 600,
+          lineHeight: 1.08, letterSpacing: '-0.03em',
+          color: 'var(--text-1)', marginBottom: 22,
+          textWrap: 'pretty',
+        }}>
+          Tu biblioteca personal<br />
+          <span style={{ color: 'var(--accent)' }}>de prompts IA</span>
+        </h1>
+
+        <p style={{
+          fontSize: 18, color: 'var(--text-2)', lineHeight: 1.65,
+          maxWidth: 520, margin: '0 auto 40px', textWrap: 'pretty',
+        }}>
+          Guarda, organiza y mejora los prompts que usas con ChatGPT, Claude o Midjourney. Todo en un solo lugar.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Btn size="lg" onClick={() => navigate('register')}>
+            Empezar gratis
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+          </Btn>
+          <Btn variant="outline" size="lg" onClick={() => navigate('public-prompt')}>Ver ejemplo público</Btn>
+        </div>
+      </section>
+
+      {/* Mock UI */}
+      <section style={{ maxWidth: 900, margin: '0 auto 80px', padding: '0 24px' }}>
+        <div style={{
+          background: 'var(--surface)', borderRadius: 'var(--r-xl)',
+          border: '1px solid var(--border)', overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.09), 0 4px 16px rgba(0,0,0,0.05)',
+        }}>
+          {/* Mock top bar */}
+          <div style={{
+            padding: '12px 20px', borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: 'var(--bg)',
+          }}>
+            {['oklch(65% 0.20 25)', 'oklch(70% 0.20 75)', 'oklch(65% 0.20 150)'].map((c, i) => (
+              <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
+            ))}
+            <div style={{
+              marginLeft: 8, flex: 1, background: 'var(--bg-3)', borderRadius: 6,
+              height: 22, maxWidth: 280, display: 'flex', alignItems: 'center',
+              padding: '0 10px',
+            }}>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--mono)' }}>
+                promptstore.app/dashboard
+              </span>
+            </div>
+          </div>
+          {/* Mock content */}
+          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 360 }}>
+            <div style={{ borderRight: '1px solid var(--border)', padding: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {['Todos', 'Escritura', 'Desarrollo', 'Marketing', '★ Favoritos'].map((item, i) => (
+                <div key={i} style={{
+                  padding: '7px 12px', borderRadius: 8, fontSize: 13, cursor: 'default',
+                  background: i === 0 ? 'var(--accent-light)' : 'transparent',
+                  color: i === 0 ? 'var(--accent)' : 'var(--text-2)',
+                  fontWeight: i === 0 ? 500 : 400,
+                }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {SAMPLE_PROMPTS.slice(0, 3).map(p => (
+                <div key={p.id} style={{
+                  padding: '12px 16px', background: 'var(--bg)',
+                  borderRadius: 10, border: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-1)', marginBottom: 2 }}>{p.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{p.category} · {p.updated}</div>
+                  </div>
+                  {p.favorite && <span style={{ color: 'oklch(70% 0.18 75)', fontSize: 13 }}>★</span>}
+                  {p.public && <Badge color="green">público</Badge>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section style={{ maxWidth: 960, margin: '0 auto 96px', padding: '0 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+          {features.map((f, i) => (
+            <div key={i} style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 'var(--r-lg)', padding: 28,
+              boxShadow: 'var(--shadow-sm)',
+            }}>
+              <div style={{
+                width: 40, height: 40, background: 'var(--accent-light)',
+                borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--accent)', fontSize: 18, marginBottom: 16,
+              }}>
+                {f.icon}
+              </div>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>{f.title}</h3>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA final */}
+      <section style={{
+        maxWidth: 600, margin: '0 auto 96px', padding: '0 24px', textAlign: 'center',
+      }}>
+        <h2 style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 12 }}>
+          Empieza gratis hoy
+        </h2>
+        <p style={{ color: 'var(--text-2)', marginBottom: 28, fontSize: 16 }}>
+          Sin tarjeta de crédito. Sin complicaciones.
+        </p>
+        <Btn size="lg" onClick={() => navigate('register')}>Crear cuenta gratuita</Btn>
+      </section>
+
+      {/* Footer */}
+      <footer style={{
+        borderTop: '1px solid var(--border)', padding: '24px',
+        textAlign: 'center', color: 'var(--text-3)', fontSize: 13,
+      }}>
+        © 2026 PromptStore · Hecho para guardar lo que funciona
+      </footer>
+    </div>
+  );
+}
+
+/* ─── AUTH ─────────────────────────────────────────────────── */
+function AuthScreen({ mode, navigate, onLogin }) {
+  const isLogin = mode === 'login';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = e => {
+    e.preventDefault();
+    setError('');
+    if (!email || !password) { setError('Por favor rellena todos los campos.'); return; }
+    if (!isLogin && !name) { setError('Escribe tu nombre.'); return; }
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onLogin(name || email.split('@')[0]); }, 900);
+  };
+
+  return (
+    <div className="screen-enter" style={{
+      minHeight: 'calc(100vh - 56px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '40px 24px',
+    }}>
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 'var(--r-xl)', padding: '40px 36px',
+        width: '100%', maxWidth: 400,
+        boxShadow: 'var(--shadow-lg)',
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
+          <Logo size={24} />
+          <span style={{ fontWeight: 600, fontSize: 16 }}>PromptStore</span>
+        </div>
+
+        <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 6 }}>
+          {isLogin ? 'Bienvenido de vuelta' : 'Crea tu cuenta'}
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 28 }}>
+          {isLogin ? 'Accede a tu biblioteca de prompts.' : 'Empieza gratis. Sin tarjeta de crédito.'}
+        </p>
+
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!isLogin && (
+            <Input label="Nombre" placeholder="Tu nombre" value={name} onChange={e => setName(e.target.value)} />
+          )}
+          <Input label="Email" type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+          <Input label="Contraseña" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+
+          {error && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 'var(--r-sm)',
+              background: 'oklch(95% 0.04 25)', color: 'oklch(40% 0.18 25)',
+              fontSize: 13,
+            }}>
+              {error}
+            </div>
+          )}
+
+          <Btn type="submit" size="lg" disabled={loading} style={{ justifyContent: 'center', marginTop: 4 }}>
+            {loading ? 'Un momento…' : isLogin ? 'Entrar' : 'Crear cuenta'}
+          </Btn>
+        </form>
+
+        <div style={{
+          marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)',
+          textAlign: 'center', fontSize: 13, color: 'var(--text-2)',
+        }}>
+          {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
+          <button onClick={() => navigate(isLogin ? 'register' : 'login')} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--accent)', fontWeight: 500, fontSize: 13, fontFamily: 'var(--sans)',
+          }}>
+            {isLogin ? 'Regístrate' : 'Inicia sesión'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── DASHBOARD ───────────────────────────────────────────── */
+function DashboardScreen({ navigate, user }) {
+  const [prompts, setPrompts] = useState(SAMPLE_PROMPTS);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('Todos');
+  const [onlyFav, setOnlyFav] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const filtered = prompts.filter(p => {
+    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase()) || p.description.toLowerCase().includes(search.toLowerCase());
+    const matchCat = category === 'Todos' || p.category === category;
+    const matchFav = !onlyFav || p.favorite;
+    return matchSearch && matchCat && matchFav;
+  });
+
+  const toggleFav = id => setPrompts(ps => ps.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p));
+  const deletePrompt = id => { setPrompts(ps => ps.filter(p => p.id !== id)); setDeleteConfirm(null); };
+
+  return (
+    <div className="screen-enter" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 'calc(100vh - 56px)' }}>
+      {/* Sidebar */}
+      <aside style={{
+        borderRight: '1px solid var(--border)',
+        padding: '24px 16px',
+        display: 'flex', flexDirection: 'column', gap: 4,
+        position: 'sticky', top: 56, height: 'calc(100vh - 56px)', overflowY: 'auto',
+      }}>
+        <div style={{ padding: '0 8px', marginBottom: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)' }}>
+            Categorías
+          </span>
+        </div>
+        {CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => { setCategory(cat); if (cat !== 'Todos') setOnlyFav(false); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 12px', borderRadius: 'var(--r-sm)', fontSize: 13,
+              background: category === cat ? 'var(--accent-light)' : 'transparent',
+              color: category === cat ? 'var(--accent)' : 'var(--text-2)',
+              fontWeight: category === cat ? 500 : 400,
+              border: 'none', cursor: 'pointer', textAlign: 'left',
+              fontFamily: 'var(--sans)', width: '100%',
+              transition: 'background 0.12s ease',
+            }}
+            onMouseEnter={e => { if (category !== cat) e.currentTarget.style.background = 'var(--bg-3)'; }}
+            onMouseLeave={e => { if (category !== cat) e.currentTarget.style.background = 'transparent'; }}
+          >
+            {cat}
+          </button>
+        ))}
+
+        <div style={{ padding: '0 8px', marginTop: 16, marginBottom: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)' }}>
+            Filtros
+          </span>
+        </div>
+        <button onClick={() => { setOnlyFav(f => !f); setCategory('Todos'); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 12px', borderRadius: 'var(--r-sm)', fontSize: 13,
+            background: onlyFav ? 'oklch(95% 0.05 80)' : 'transparent',
+            color: onlyFav ? 'oklch(45% 0.16 75)' : 'var(--text-2)',
+            fontWeight: onlyFav ? 500 : 400,
+            border: 'none', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'var(--sans)', width: '100%',
+          }}
+        >
+          ★ Favoritos
+        </button>
+
+        <div style={{ flex: 1 }} />
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '0 8px', marginBottom: 8 }}>
+            {prompts.length} prompt{prompts.length !== 1 ? 's' : ''} guardados
+          </div>
+          <Btn onClick={() => navigate('editor-new')} style={{ width: '100%', justifyContent: 'center' }} size="sm">
+            + Nuevo prompt
+          </Btn>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ padding: '28px 32px', overflowY: 'auto' }}>
+        {/* Top bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{ position: 'relative', flex: 1, maxWidth: 380 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+              style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}>
+              <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              placeholder="Buscar prompts…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{
+                width: '100%', paddingLeft: 34, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)',
+                fontSize: 14, fontFamily: 'var(--sans)', background: 'var(--surface)',
+                color: 'var(--text-1)', outline: 'none',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+          <div style={{ flex: 1 }} />
+          <Btn onClick={() => navigate('editor-new')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" d="M12 5v14M5 12h14"/></svg>
+            Nuevo prompt
+          </Btn>
+        </div>
+
+        {/* Breadcrumb */}
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600 }}>
+            {onlyFav ? '★ Favoritos' : category}
+            {search && <span style={{ color: 'var(--text-3)', fontSize: 14, fontWeight: 400 }}> · "{search}"</span>}
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>
+            {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        {/* Grid */}
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-3)' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>◇</div>
+            <p style={{ fontSize: 15 }}>No hay prompts que coincidan.</p>
+            <Btn variant="ghost" size="sm" onClick={() => { setSearch(''); setCategory('Todos'); setOnlyFav(false); }}
+              style={{ marginTop: 12 }}>
+              Limpiar filtros
+            </Btn>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filtered.map(prompt => (
+              <div key={prompt.id}
+                style={{
+                  background: 'var(--surface)', border: '1.5px solid',
+                  borderColor: hovered === prompt.id ? 'var(--border-2)' : 'var(--border)',
+                  borderRadius: 'var(--r-lg)', padding: '18px 20px',
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                  boxShadow: hovered === prompt.id ? 'var(--shadow-md)' : 'var(--shadow-sm)',
+                  transform: hovered === prompt.id ? 'translateY(-1px)' : 'none',
+                }}
+                onMouseEnter={() => setHovered(prompt.id)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => navigate('editor', prompt)}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-1)' }}>{prompt.title}</span>
+                      {prompt.favorite && <span style={{ color: 'oklch(70% 0.18 75)', fontSize: 13, lineHeight: 1 }}>★</span>}
+                      <Badge color="default">{prompt.category}</Badge>
+                      {prompt.public && <Badge color="green">público</Badge>}
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, textWrap: 'pretty' }}>
+                      {prompt.description}
+                    </p>
+                    <div style={{ marginTop: 10 }}>
+                      <span style={{
+                        fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)',
+                        background: 'var(--bg-2)', padding: '3px 8px', borderRadius: 6,
+                      }}>
+                        {prompt.content.slice(0, 72)}…
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => toggleFav(prompt.id)}
+                      title={prompt.favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                      style={{
+                        width: 30, height: 30, borderRadius: 'var(--r-sm)',
+                        border: '1px solid var(--border)', background: 'var(--bg)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: prompt.favorite ? 'oklch(70% 0.18 75)' : 'var(--text-3)',
+                        fontSize: 14, transition: 'all 0.12s ease',
+                      }}
+                    >★</button>
+                    <button
+                      onClick={() => setDeleteConfirm(prompt.id)}
+                      title="Eliminar"
+                      style={{
+                        width: 30, height: 30, borderRadius: 'var(--r-sm)',
+                        border: '1px solid var(--border)', background: 'var(--bg)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text-3)', fontSize: 12, transition: 'all 0.12s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'oklch(55% 0.20 25)'; e.currentTarget.style.color = 'oklch(55% 0.20 25)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-3)'; }}
+                    >✕</button>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Actualizado {prompt.updated}</span>
+                  <div style={{ flex: 1 }} />
+                  {prompt.public && (
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate('public-prompt', prompt); }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--sans)', fontWeight: 500,
+                      }}
+                    >
+                      Ver URL pública →
+                    </button>
+                  )}
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate('editor', prompt); }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12, color: 'var(--text-2)', fontFamily: 'var(--sans)', fontWeight: 500,
+                    }}
+                  >
+                    Editar →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Delete modal */}
+      {deleteConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+          backdropFilter: 'blur(4px)',
+        }} onClick={() => setDeleteConfirm(null)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--surface)', borderRadius: 'var(--r-lg)',
+            padding: 28, maxWidth: 360, width: '90%',
+            boxShadow: 'var(--shadow-lg)',
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Eliminar prompt</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 20, lineHeight: 1.5 }}>
+              Esta acción no se puede deshacer. ¿Estás seguro de que quieres eliminar este prompt?
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Btn variant="outline" onClick={() => setDeleteConfirm(null)}>Cancelar</Btn>
+              <Btn variant="danger" onClick={() => deletePrompt(deleteConfirm)}>Eliminar</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── EDITOR ──────────────────────────────────────────────── */
+function EditorScreen({ navigate, initialPrompt }) {
+  const isNew = !initialPrompt;
+  const [title, setTitle] = useState(initialPrompt?.title || '');
+  const [description, setDescription] = useState(initialPrompt?.description || '');
+  const [content, setContent] = useState(initialPrompt?.content || '');
+  const [category, setCategory] = useState(initialPrompt?.category || '');
+  const [isFav, setIsFav] = useState(initialPrompt?.favorite || false);
+  const [isPublic, setIsPublic] = useState(initialPrompt?.public || false);
+  const [saved, setSaved] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPanel, setAiPanel] = useState(false);
+  const [aiResult, setAiResult] = useState('');
+  const charCount = content.length;
+
+  const save = () => {
+    if (!title.trim()) return;
+    setSaved(true);
+    setTimeout(() => { setSaved(false); navigate('dashboard'); }, 1200);
+  };
+
+  const improvePrompt = () => {
+    if (!content.trim()) return;
+    setAiLoading(true);
+    setAiPanel(true);
+    setAiResult('');
+    setTimeout(() => {
+      setAiResult(content + '\n\n[Versión mejorada por IA]\n\nActúa como un experto especializado en el dominio indicado. ' + content.slice(0, 120) + '...\n\nAsegúrate de:\n- Ser específico sobre el rol y contexto\n- Incluir formato de salida esperado\n- Añadir restricciones claras\n- Definir el tono y nivel de detalle');
+      setAiLoading(false);
+    }, 1800);
+  };
+
+  const applyAiResult = () => { setContent(aiResult); setAiPanel(false); setAiResult(''); };
+
+  return (
+    <div className="screen-enter" style={{
+      maxWidth: 820, margin: '0 auto', padding: '32px 24px 64px',
+    }}>
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28, fontSize: 13 }}>
+        <button onClick={() => navigate('dashboard')} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-3)', fontFamily: 'var(--sans)', fontSize: 13,
+        }}>
+          Dashboard
+        </button>
+        <span style={{ color: 'var(--text-3)' }}>›</span>
+        <span style={{ color: 'var(--text-2)' }}>{isNew ? 'Nuevo prompt' : 'Editar prompt'}</span>
+      </div>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 600, flex: 1 }}>
+          {isNew ? 'Nuevo prompt' : 'Editar prompt'}
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {saved && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 'var(--r-sm)',
+              background: 'oklch(93% 0.04 155)', color: 'oklch(38% 0.15 155)',
+              fontSize: 13, fontWeight: 500,
+            }}>
+              ✓ Guardado
+            </div>
+          )}
+          <Btn variant="ghost" onClick={() => navigate('dashboard')}>Cancelar</Btn>
+          <Btn onClick={save} disabled={!title.trim()}>
+            {isNew ? 'Crear prompt' : 'Guardar cambios'}
+          </Btn>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24 }}>
+        {/* Left: main fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Input label="Título" placeholder="Dale un nombre claro a este prompt" value={title} onChange={e => setTitle(e.target.value)} />
+          <Input label="Descripción" placeholder="¿Para qué sirve este prompt? (1-2 frases)" value={description} onChange={e => setDescription(e.target.value)} multiline rows={2} />
+
+          {/* Content with AI */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>Contenido del prompt</label>
+              <button onClick={improvePrompt} disabled={!content.trim() || aiLoading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 'var(--r-sm)',
+                  background: 'var(--accent-light)', color: 'var(--accent)',
+                  border: 'none', cursor: content.trim() && !aiLoading ? 'pointer' : 'not-allowed',
+                  opacity: !content.trim() || aiLoading ? 0.5 : 1,
+                  fontSize: 12, fontWeight: 500, fontFamily: 'var(--sans)',
+                  transition: 'all 0.15s',
+                }}>
+                {aiLoading ? '…' : '✦'} {aiLoading ? 'Mejorando' : 'Mejorar con IA'}
+              </button>
+            </div>
+            <textarea
+              placeholder="Escribe tu prompt aquí. Sé específico sobre el rol, contexto, formato de salida y restricciones."
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              rows={12}
+              style={{
+                width: '100%', padding: '13px', resize: 'vertical',
+                border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)',
+                fontSize: 14, fontFamily: 'var(--mono)',
+                color: 'var(--text-1)', background: 'var(--bg-2)',
+                lineHeight: 1.7, outline: 'none',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-3)' }}>
+              <span>Usa [VARIABLES] para marcar partes dinámicas</span>
+              <span>{charCount} caracteres</span>
+            </div>
+          </div>
+
+          {/* AI Panel */}
+          {aiPanel && (
+            <div style={{
+              border: '1.5px solid var(--accent)', borderRadius: 'var(--r-lg)',
+              overflow: 'hidden', background: 'var(--surface)',
+            }}>
+              <div style={{
+                padding: '12px 16px', background: 'var(--accent-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent)' }}>
+                  ✦ Versión mejorada por IA
+                </span>
+                <button onClick={() => setAiPanel(false)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--accent)', fontSize: 16, lineHeight: 1,
+                }}>✕</button>
+              </div>
+              <div style={{ padding: 16 }}>
+                {aiLoading ? (
+                  <div style={{ color: 'var(--text-3)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
+                    Analizando y mejorando tu prompt…
+                  </div>
+                ) : (
+                  <>
+                    <pre style={{
+                      fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-1)',
+                      whiteSpace: 'pre-wrap', lineHeight: 1.7, marginBottom: 14,
+                      maxHeight: 220, overflowY: 'auto',
+                    }}>
+                      {aiResult}
+                    </pre>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Btn size="sm" onClick={applyAiResult}>Usar esta versión</Btn>
+                      <Btn variant="ghost" size="sm" onClick={() => setAiPanel(false)}>Descartar</Btn>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: metadata */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Publish settings */}
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-lg)', padding: 18,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-3)', marginBottom: 14 }}>
+              Visibilidad
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Favorite toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-1)' }}>⭐ Favorito</span>
+                <div onClick={() => setIsFav(f => !f)} style={{
+                  width: 36, height: 20, borderRadius: 99,
+                  background: isFav ? 'oklch(70% 0.18 75)' : 'var(--border)',
+                  position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 2, left: isFav ? 18 : 2,
+                    width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </div>
+              </label>
+
+              {/* Public toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-1)' }}>🌍 Público</span>
+                <div onClick={() => setIsPublic(p => !p)} style={{
+                  width: 36, height: 20, borderRadius: 99,
+                  background: isPublic ? 'var(--accent)' : 'var(--border)',
+                  position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 2, left: isPublic ? 18 : 2,
+                    width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </div>
+              </label>
+
+              {isPublic && (
+                <div style={{
+                  padding: '8px 10px', background: 'var(--bg-2)',
+                  borderRadius: 'var(--r-sm)', marginTop: 2,
+                }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 3 }}>URL pública</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-2)', wordBreak: 'break-all' }}>
+                    /prompt/{title ? title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 32) || 'mi-prompt' : 'mi-prompt'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Category */}
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-lg)', padding: 18,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-3)', marginBottom: 14 }}>
+              Categoría
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {CATEGORIES.slice(1).map(cat => (
+                <button key={cat} onClick={() => setCategory(cat === category ? '' : cat)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 99, fontSize: 12, cursor: 'pointer',
+                    border: '1.5px solid', fontFamily: 'var(--sans)',
+                    borderColor: category === cat ? 'var(--accent)' : 'var(--border)',
+                    background: category === cat ? 'var(--accent-light)' : 'var(--bg)',
+                    color: category === cat ? 'var(--accent)' : 'var(--text-2)',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tips */}
+          <div style={{
+            background: 'var(--accent-light)', border: '1px solid',
+            borderColor: 'oklch(85% 0.08 270)',
+            borderRadius: 'var(--r-lg)', padding: 16,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', marginBottom: 10 }}>
+              ✦ Tips de escritura
+            </div>
+            {[
+              'Define el rol: "Actúa como…"',
+              'Especifica el formato de salida',
+              'Usa [VARIABLES] para datos dinámicos',
+              'Añade restricciones de longitud',
+            ].map((tip, i) => (
+              <div key={i} style={{ fontSize: 12, color: 'oklch(42% 0.12 270)', marginBottom: 5, paddingLeft: 10, borderLeft: '2px solid var(--accent-mid)' }}>
+                {tip}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── PUBLIC PROMPT ───────────────────────────────────────── */
+function PublicPromptScreen({ navigate, prompt }) {
+  const p = prompt || SAMPLE_PROMPTS[0];
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard?.writeText(p.content).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="screen-enter">
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px 80px' }}>
+        {/* Category + meta */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+          <Badge color="accent">{p.category}</Badge>
+          <span style={{ color: 'var(--text-3)', fontSize: 13 }}>·</span>
+          <span style={{ fontSize: 13, color: 'var(--text-3)' }}>Actualizado {p.updated}</span>
+        </div>
+
+        <h1 style={{
+          fontSize: 36, fontWeight: 600, letterSpacing: '-0.02em',
+          color: 'var(--text-1)', marginBottom: 14, lineHeight: 1.15, textWrap: 'pretty',
+        }}>
+          {p.title}
+        </h1>
+
+        <p style={{
+          fontSize: 17, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 36,
+          textWrap: 'pretty',
+        }}>
+          {p.description}
+        </p>
+
+        {/* Prompt block */}
+        <div style={{
+          background: 'var(--surface)', border: '1.5px solid var(--border)',
+          borderRadius: 'var(--r-lg)', overflow: 'hidden',
+          boxShadow: 'var(--shadow-md)',
+        }}>
+          <div style={{
+            padding: '12px 18px', borderBottom: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--bg)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', fontFamily: 'var(--mono)' }}>
+                prompt
+              </span>
+            </div>
+            <button onClick={copy} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 12px', borderRadius: 'var(--r-sm)',
+              border: '1px solid var(--border)', background: copied ? 'oklch(93% 0.04 155)' : 'var(--surface)',
+              color: copied ? 'oklch(38% 0.15 155)' : 'var(--text-2)',
+              cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'var(--sans)',
+              transition: 'all 0.15s',
+            }}>
+              {copied ? '✓ Copiado' : 'Copiar'}
+            </button>
+          </div>
+
+          <pre style={{
+            margin: 0, padding: '22px 20px',
+            fontFamily: 'var(--mono)', fontSize: 14, color: 'var(--text-1)',
+            lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}>
+            {p.content}
+          </pre>
+        </div>
+
+        {/* CTA */}
+        <div style={{
+          marginTop: 36, padding: '24px', background: 'var(--accent-light)',
+          borderRadius: 'var(--r-lg)', border: '1px solid oklch(85% 0.08 270)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3 }}>
+              ¿Quieres guardar tus propios prompts?
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+              Crea una cuenta gratuita en PromptStore.
+            </div>
+          </div>
+          <Btn onClick={() => navigate('register')}>Crear cuenta gratis</Btn>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ─── APP SHELL ───────────────────────────────────────────── */
+// Derive light/mid tones from a main oklch color string
+function deriveLight(main) {
+  // Extract hue from "oklch(L% C H)" and build a light tint
+  const m = main.match(/oklch\([\d.]+%\s+[\d.]+\s+([\d.]+)\)/);
+  if (m) return `oklch(94% 0.04 ${m[1]})`;
+  return 'oklch(94% 0.04 270)';
+}
+function deriveMid(main) {
+  const m = main.match(/oklch\([\d.]+%\s+[\d.]+\s+([\d.]+)\)/);
+  if (m) return `oklch(72% 0.12 ${m[1]})`;
+  return 'oklch(72% 0.12 270)';
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const [screen, setScreen] = useState('home');
+  const [user, setUser] = useState(null);
+  const [activePrompt, setActivePrompt] = useState(null);
+
+  // Apply tweaks
+  useEffect(() => {
+    const accent = tweaks.accentColor || 'oklch(55% 0.18 270)';
+    const r = ROUNDNESS[tweaks.roundness] || ROUNDNESS.medium;
+    const root = document.documentElement;
+    root.style.setProperty('--accent', accent);
+    root.style.setProperty('--accent-light', deriveLight(accent));
+    root.style.setProperty('--accent-mid', deriveMid(accent));
+    root.style.setProperty('--r-sm', r.sm + 'px');
+    root.style.setProperty('--r-md', r.md + 'px');
+    root.style.setProperty('--r-lg', r.lg + 'px');
+    root.style.setProperty('--r-xl', r.xl + 'px');
+    if (tweaks.darkMode) {
+      root.style.setProperty('--bg', 'oklch(12% 0.01 260)');
+      root.style.setProperty('--bg-2', 'oklch(16% 0.012 260)');
+      root.style.setProperty('--bg-3', 'oklch(22% 0.015 260)');
+      root.style.setProperty('--surface', 'oklch(17% 0.012 260)');
+      root.style.setProperty('--border', 'oklch(28% 0.015 260)');
+      root.style.setProperty('--border-2', 'oklch(36% 0.018 260)');
+      root.style.setProperty('--text-1', 'oklch(93% 0.008 60)');
+      root.style.setProperty('--text-2', 'oklch(68% 0.01 260)');
+      root.style.setProperty('--text-3', 'oklch(50% 0.01 260)');
+    } else {
+      root.style.setProperty('--bg', 'oklch(98.5% 0.005 60)');
+      root.style.setProperty('--bg-2', 'oklch(96% 0.006 60)');
+      root.style.setProperty('--bg-3', 'oklch(92% 0.008 260)');
+      root.style.setProperty('--surface', '#ffffff');
+      root.style.setProperty('--border', 'oklch(89% 0.008 260)');
+      root.style.setProperty('--border-2', 'oklch(82% 0.012 260)');
+      root.style.setProperty('--text-1', 'oklch(18% 0.015 260)');
+      root.style.setProperty('--text-2', 'oklch(42% 0.012 260)');
+      root.style.setProperty('--text-3', 'oklch(62% 0.01 260)');
+    }
+  }, [tweaks]);
+
+  const navigate = (target, data = null) => {
+    setActivePrompt(data);
+    setScreen(target);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogin = name => {
+    setUser(name);
+    navigate('dashboard');
+  };
+
+  return (
+    <>
+      <Navbar screen={screen} navigate={navigate} user={user} />
+
+      {screen === 'home'         && <HomeScreen navigate={navigate} />}
+      {screen === 'login'        && <AuthScreen mode="login" navigate={navigate} onLogin={handleLogin} />}
+      {screen === 'register'     && <AuthScreen mode="register" navigate={navigate} onLogin={handleLogin} />}
+      {screen === 'dashboard'    && <DashboardScreen navigate={navigate} user={user} />}
+      {screen === 'editor'       && <EditorScreen navigate={navigate} initialPrompt={activePrompt} />}
+      {screen === 'editor-new'   && <EditorScreen navigate={navigate} initialPrompt={null} />}
+      {screen === 'public-prompt'&& <PublicPromptScreen navigate={navigate} prompt={activePrompt} />}
+
+      <TweaksPanel>
+        <TweakSection label="Color de acento" />
+        <TweakColor
+          label="Acento"
+          value={tweaks.accentColor}
+          onChange={v => setTweak('accentColor', v)}
+          options={[
+            'oklch(55% 0.18 270)',
+            'oklch(50% 0.20 255)',
+            'oklch(54% 0.16 200)',
+            'oklch(55% 0.20 10)',
+          ]}
+        />
+        <TweakSection label="Densidad" />
+        <TweakRadio
+          label="UI"
+          value={tweaks.density}
+          onChange={v => setTweak('density', v)}
+          options={['compact', 'comfortable', 'spacious']}
+        />
+        <TweakSection label="Bordes" />
+        <TweakRadio
+          label="Estilo"
+          value={tweaks.roundness}
+          onChange={v => setTweak('roundness', v)}
+          options={['sharp', 'medium', 'round']}
+        />
+        <TweakSection label="Apariencia" />
+        <TweakToggle
+          label="Modo oscuro"
+          value={tweaks.darkMode}
+          onChange={v => setTweak('darkMode', v)}
+        />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

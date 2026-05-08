@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Checklist Vibe Coding</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 12px;
+      font-size: 32px;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 18px;
+      color: #d1d5db;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+
+    .intro {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .intro h2 {
+      margin-top: 0;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      border-left: 6px solid #2563eb;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 22px;
+      color: #111827;
+    }
+
+    .card p {
+      line-height: 1.5;
+      color: #4b5563;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 15px;
+      resize: vertical;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
+    .summary {
+      background: #ecfdf5;
+      border-left: 6px solid #10b981;
+    }
+
+    footer {
+      text-align: center;
+      color: #6b7280;
+      margin-top: 32px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Checklist Vibe Coding</h1>
+    <p>Antes de crear una app con IA, definimos qué queremos construir.</p>
+  </header>
+
+  <main>
+
+    <section class="intro">
+      <h2>Cómo usar esta checklist</h2>
+      <p>
+        Esta plantilla nos ayuda a ordenar una idea antes de pedirle a una inteligencia artificial
+        que genere una aplicación. El objetivo es transformar una idea vaga en contexto útil para
+        herramientas como ChatGPT, Gemini, Claude Code, Codex, Antigravity, Google AI Studio,
+        Supabase o Firebase.
+      </p>
+      <p>
+        Primero rellenamos los puntos clave. Después añadimos una explicación en lenguaje natural.
+        Con todo ese contexto, podremos crear un prompt de arranque mucho más preciso.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>1. Problema</h2>
+      <p>¿Qué problema queremos resolver con esta aplicación?</p>
+      <label for="problema">Descripción del problema</label>
+      <textarea id="problema" placeholder="Ejemplo: Quiero guardar y organizar prompts para no perderlos."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>2. Usuario</h2>
+      <p>¿Quién va a usar esta app y en qué contexto?</p>
+      <label for="usuario">Usuario objetivo</label>
+      <textarea id="usuario" placeholder="Ejemplo: Creadores de contenido, desarrolladores, marketers o personas que usan IA a diario."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>3. Funcionalidades principales</h2>
+      <p>¿Qué acciones importantes podrá hacer el usuario?</p>
+      <label for="funcionalidades">Funcionalidades</label>
+      <textarea id="funcionalidades" placeholder="Ejemplo: Crear prompts, editarlos, borrarlos, organizarlos por categorías y marcarlos como favoritos."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>4. Datos que necesitamos guardar</h2>
+      <p>¿Qué información necesita almacenar la aplicación?</p>
+      <label for="datos">Datos principales</label>
+      <textarea id="datos" placeholder="Ejemplo: Usuarios, prompts, categorías, favoritos y estado público o privado."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>5. Login y usuarios</h2>
+      <p>¿La app necesita registro, inicio de sesión o perfiles de usuario?</p>
+      <label for="login">Sistema de usuarios</label>
+      <textarea id="login" placeholder="Ejemplo: Sí, cada usuario debe iniciar sesión y ver solo sus propios prompts."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>6. Pantallas de la app</h2>
+      <p>¿Qué pantallas o secciones tendrá la aplicación?</p>
+      <label for="pantallas">Pantallas necesarias</label>
+      <textarea id="pantallas" placeholder="Ejemplo: Login, registro, dashboard, crear prompt, editar prompt, detalle del prompt y página pública."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>7. Parte pública y SEO</h2>
+      <p>¿Habrá páginas visibles para cualquier persona o para buscadores?</p>
+      <label for="seo">Parte pública</label>
+      <textarea id="seo" placeholder="Ejemplo: Sí, algunos prompts podrán publicarse en una URL compartible y optimizada para SEO."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>8. Uso de inteligencia artificial</h2>
+      <p>¿Dónde aporta valor la IA dentro de la app?</p>
+      <label for="ia">Funciones con IA</label>
+      <textarea id="ia" placeholder="Ejemplo: Mejorar prompts, generar variantes y sugerir títulos o categorías."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>9. MVP o primera versión mínima</h2>
+      <p>¿Cuál es la versión más pequeña que ya tendría sentido publicar?</p>
+      <label for="mvp">MVP</label>
+      <textarea id="mvp" placeholder="Ejemplo: Login, crear prompts, editarlos, listarlos y guardarlos en base de datos."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>10. Resultado final esperado</h2>
+      <p>¿Qué queremos tener al terminar el proyecto?</p>
+      <label for="resultado">Resultado final</label>
+      <textarea id="resultado" placeholder="Ejemplo: Una app online funcional donde los usuarios puedan guardar, mejorar y compartir prompts."></textarea>
+    </section>
+
+    <section class="card summary">
+      <h2>Explicación en lenguaje natural</h2>
+      <p>
+        Además de la checklist, conviene escribir la idea como si se la explicáramos a una persona.
+        Esta parte da contexto, intención y matices que una lista no siempre recoge.
+      </p>
+      <label for="descripcion">Describe la app con tus palabras</label>
+      <textarea id="descripcion" placeholder="Ejemplo: Quiero crear una aplicación sencilla llamada PromptStore donde los usuarios puedan guardar los prompts que usan con IA..."></textarea>
+    </section>
+
+    <footer>
+      Checklist de trabajo para el Curso de Vibe Coding.
+    </footer>
+
+  </main>
+
+</body>
+</html>

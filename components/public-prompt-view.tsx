@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Btn } from "@/components/ui/btn";
 import { Badge } from "@/components/ui/badge";
-import type { Prompt } from "@/lib/db/prompts";
+import type { PublicPrompt } from "@/lib/db/prompts";
 import { formatRelativeTime } from "@/lib/format";
 
-export function PublicPromptView({ prompt }: { prompt: Prompt }) {
+export function PublicPromptView({ prompt }: { prompt: PublicPrompt }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
 

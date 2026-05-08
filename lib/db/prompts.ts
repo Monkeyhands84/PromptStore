@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Prompt = {
@@ -15,6 +16,10 @@ export type Prompt = {
   updated_at: string;
 };
 
+// Public-safe projection — used for the /prompt/[slug] page so the user_id
+// of the author never reaches the client.
+export type PublicPrompt = Omit<Prompt, "user_id">;
+
 export type PromptInput = {
   title: string;
   description: string;
@@ -27,7 +32,10 @@ export type PromptInput = {
 const PROMPT_COLUMNS =
   "id, user_id, title, description, content, category, favorite, public, slug, created_at, updated_at";
 
-export async function listMyPrompts(): Promise<Prompt[]> {
+const PUBLIC_PROMPT_COLUMNS =
+  "id, title, description, content, category, favorite, public, slug, created_at, updated_at";
+
+export const listMyPrompts = cache(async (): Promise<Prompt[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("prompts")
@@ -36,31 +44,33 @@ export async function listMyPrompts(): Promise<Prompt[]> {
 
   if (error) throw error;
   return (data ?? []) as Prompt[];
-}
+});
 
-export async function getMyPromptById(id: string): Promise<Prompt | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("prompts")
-    .select(PROMPT_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
+export const getMyPromptById = cache(
+  async (id: string): Promise<Prompt | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("prompts")
+      .select(PROMPT_COLUMNS)
+      .eq("id", id)
+      .maybeSingle();
 
-  if (error) throw error;
-  return (data as Prompt | null) ?? null;
-}
+    if (error) throw error;
+    return (data as Prompt | null) ?? null;
+  },
+);
 
-export async function getPublicPromptBySlug(
-  slug: string,
-): Promise<Prompt | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("prompts")
-    .select(PROMPT_COLUMNS)
-    .eq("slug", slug)
-    .eq("public", true)
-    .maybeSingle();
+export const getPublicPromptBySlug = cache(
+  async (slug: string): Promise<PublicPrompt | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("prompts")
+      .select(PUBLIC_PROMPT_COLUMNS)
+      .eq("slug", slug)
+      .eq("public", true)
+      .maybeSingle();
 
-  if (error) throw error;
-  return (data as Prompt | null) ?? null;
-}
+    if (error) throw error;
+    return (data as PublicPrompt | null) ?? null;
+  },
+);

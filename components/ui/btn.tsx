@@ -13,6 +13,7 @@ type BtnProps = {
   disabled?: boolean;
   style?: CSSProperties;
   type?: "button" | "submit" | "reset";
+  ariaLabel?: string;
 };
 
 const sizes: Record<BtnSize, CSSProperties> = {
@@ -58,6 +59,7 @@ export function Btn({
   disabled,
   style,
   type = "button",
+  ariaLabel,
 }: BtnProps) {
   const base: CSSProperties = {
     display: "inline-flex",
@@ -67,7 +69,7 @@ export function Btn({
     fontWeight: 500,
     cursor: disabled ? "not-allowed" : "pointer",
     border: "none",
-    transition: "all 0.15s ease",
+    transition: "filter 0.15s ease",
     whiteSpace: "nowrap",
     opacity: disabled ? 0.5 : 1,
   };
@@ -77,13 +79,9 @@ export function Btn({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
+      className="app-btn"
       style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.filter = "brightness(0.93)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.filter = "";
-      }}
     >
       {children}
     </button>

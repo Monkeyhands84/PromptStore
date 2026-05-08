@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent, CSSProperties } from "react";
+import { useId, type ChangeEvent, type CSSProperties } from "react";
 
 type InputProps = {
   label?: string;
@@ -13,6 +13,8 @@ type InputProps = {
   hint?: string;
   style?: CSSProperties;
   mono?: boolean;
+  id?: string;
+  ariaLabel?: string;
 };
 
 export function Input({
@@ -26,7 +28,13 @@ export function Input({
   hint,
   style,
   mono,
+  id,
+  ariaLabel,
 }: InputProps) {
+  const reactId = useId();
+  const fieldId = id ?? reactId;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+
   const inputStyle: CSSProperties = {
     width: "100%",
     padding: "9px 13px",
@@ -47,6 +55,7 @@ export function Input({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {label && (
         <label
+          htmlFor={fieldId}
           style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}
         >
           {label}
@@ -54,27 +63,35 @@ export function Input({
       )}
       {multiline ? (
         <textarea
+          id={fieldId}
           rows={rows}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          aria-label={!label ? ariaLabel : undefined}
+          aria-describedby={hintId}
           style={inputStyle}
           onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
           onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
         />
       ) : (
         <input
+          id={fieldId}
           type={type}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          aria-label={!label ? ariaLabel : undefined}
+          aria-describedby={hintId}
           style={inputStyle}
           onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
           onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
         />
       )}
       {hint && (
-        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{hint}</span>
+        <span id={hintId} style={{ fontSize: 12, color: "var(--text-3)" }}>
+          {hint}
+        </span>
       )}
     </div>
   );
